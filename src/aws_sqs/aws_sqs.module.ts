@@ -4,6 +4,7 @@ import { AwsSqsController } from './aws_sqs.controller';
 
 @Module({
   providers: [AwsSqsService],
-  controllers: [AwsSqsController]
+  controllers: [AwsSqsController],
+  exports: [AwsSqsService],
 })
 export class AwsSqsModule {}

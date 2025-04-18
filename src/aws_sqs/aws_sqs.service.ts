@@ -9,15 +9,31 @@ import {
 
 @Injectable()
 export class AwsSqsService {
-  private readonly sqsClient = new SQSClient({
-    region: 'us-east-1',
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-    },
-  });
+  private readonly sqsClient: SQSClient;
+  private readonly queueUrl: string;
 
-  private readonly queueUrl = process.env.AWS_SQS_QUEUE_URL!;
+  constructor() {
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    const queueUrl = process.env.AWS_SQS_QUEUE_URL;
+    const region = process.env.AWS_REGION ?? 'ap-southeast-1';
+
+    if (!accessKeyId || !secretAccessKey || !queueUrl) {
+      throw new Error(
+        'Missing AWS SQS configuration in environment variables.',
+      );
+    }
+
+    this.queueUrl = queueUrl;
+
+    this.sqsClient = new SQSClient({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+  }
 
   async sendMessage(messageBody: string) {
     const command = new SendMessageCommand({
@@ -36,7 +52,18 @@ export class AwsSqsService {
     });
 
     const result = await this.sqsClient.send(command);
-    return result.Messages;
+    const data = result.Messages;
+
+    // // Use for...of loop to ensure async deletion works correctly
+    // if (data) {
+    //   for (const obj of data) {
+    //     if (obj.ReceiptHandle) {
+    //       await this.deleteMessage(obj.ReceiptHandle); // Wait for the message to be deleted before continuing
+    //     }
+    //   }
+    // }
+
+    return data;
   }
 
   async deleteMessage(receiptHandle: string) {
